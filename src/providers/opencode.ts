@@ -15,14 +15,20 @@ export interface OpenCodeProvider {
   isAvailable(): Promise<boolean>;
 }
 
+function isInvalidHelpOutput(output: string): boolean {
+  const trimmed = output.trim();
+  return trimmed.includes('Commands:') && trimmed.includes('opencode');
+}
+
 export class OpenCodeCLIProvider implements OpenCodeProvider {
   public name = 'opencode';
 
   async execute(prompt: string): Promise<ExecutionResult> {
     return new Promise((resolve) => {
-      const args = ['--yes', prompt];
+      const args = ['run', prompt];
       const child = spawn('opencode', args, {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: false
       });
 
       let stdout = '';
@@ -38,6 +44,19 @@ export class OpenCodeCLIProvider implements OpenCodeProvider {
 
       child.on('close', (code) => {
         const exitCode = code ?? -1;
+        
+        if (isInvalidHelpOutput(stdout)) {
+          const errMsg = 'Invalid OpenCode invocation: received help output instead of execution';
+          logger.error(errMsg);
+          resolve({
+            stdout: '',
+            stderr: errMsg,
+            exitCode: -1,
+            errorHash: computeErrorHash(errMsg)
+          });
+          return;
+        }
+
         const errorHash = computeErrorHash(stderr || stdout);
 
         logger.debug(`OpenCode execution completed`, { 
@@ -80,3 +99,5 @@ export class OpenCodeCLIProvider implements OpenCodeProvider {
 export function createOpenCodeProvider(): OpenCodeProvider {
   return new OpenCodeCLIProvider();
 }
+
+export { isInvalidHelpOutput };

@@ -6,6 +6,7 @@ export interface GitStatusResult {
 }
 export declare function getGitStatus(): Promise<GitStatusResult>;
 export declare function hasPendingChanges(): boolean;
+export declare function hasCommits(): boolean;
 export declare function gitCommit(message: string): boolean;
 export declare function gitAdd(files: string[]): boolean;
 export declare function gitRevertLast(): boolean;

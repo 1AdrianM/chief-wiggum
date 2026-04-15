@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGitStatus = getGitStatus;
 exports.hasPendingChanges = hasPendingChanges;
+exports.hasCommits = hasCommits;
 exports.gitCommit = gitCommit;
 exports.gitAdd = gitAdd;
 exports.gitRevertLast = gitRevertLast;
@@ -48,6 +49,15 @@ function hasPendingChanges() {
         return false;
     }
 }
+function hasCommits() {
+    try {
+        (0, child_process_1.execSync)('git rev-parse --verify HEAD', { encoding: 'utf8' });
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 function gitCommit(message) {
     try {
         (0, child_process_1.execSync)('git add -A', { encoding: 'utf8' });
@@ -71,6 +81,10 @@ function gitAdd(files) {
     }
 }
 function gitRevertLast() {
+    if (!hasCommits()) {
+        logger_1.logger.warn('No commits to revert');
+        return false;
+    }
     try {
         (0, child_process_1.execSync)('git reset --hard HEAD~1', { encoding: 'utf8' });
         logger_1.logger.info('Reverted last commit');

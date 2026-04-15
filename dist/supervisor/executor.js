@@ -6,11 +6,13 @@ exports.parseOutput = parseOutput;
 const child_process_1 = require("child_process");
 const logger_1 = require("../utils/logger");
 const errors_1 = require("../utils/errors");
+const state_1 = require("./state");
 async function executeTask(provider, taskDescription, config = {}) {
     const prompt = `Check progress.json and complete the next task in PRD.md. If all tasks are complete, output [DONE]. Task: ${taskDescription}`;
+    const state = (0, state_1.loadState)();
     logger_1.logger.info('Executing task', {
-        taskId: 0,
-        retries: 0
+        taskId: state.currentTask,
+        retries: state.retries
     });
     try {
         const result = await provider.execute(prompt);

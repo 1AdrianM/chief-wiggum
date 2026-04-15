@@ -46,6 +46,15 @@ export function hasPendingChanges(): boolean {
   }
 }
 
+export function hasCommits(): boolean {
+  try {
+    execSync('git rev-parse --verify HEAD', { encoding: 'utf8' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function gitCommit(message: string): boolean {
   try {
     execSync('git add -A', { encoding: 'utf8' });
@@ -69,6 +78,11 @@ export function gitAdd(files: string[]): boolean {
 }
 
 export function gitRevertLast(): boolean {
+  if (!hasCommits()) {
+    logger.warn('No commits to revert');
+    return false;
+  }
+
   try {
     execSync('git reset --hard HEAD~1', { encoding: 'utf8' });
     logger.info('Reverted last commit');

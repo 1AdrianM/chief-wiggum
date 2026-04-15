@@ -9,9 +9,11 @@ export declare class SupervisorLoop {
     private fallbackManager;
     private totalIterations;
     private running;
+    private success;
     constructor(config?: Partial<LoopConfig>);
-    start(): Promise<void>;
+    start(): Promise<boolean>;
     stop(): void;
+    isSuccess(): boolean;
     private iteration;
     private executeCurrentTask;
     private handleExecutionResult;

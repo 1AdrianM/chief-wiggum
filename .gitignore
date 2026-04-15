@@ -1,0 +1,10 @@
+node_modules
+dist
+*.log
+.chief-wiggum
+state.json
+state.bak.json
+audit.log
+test/
+.env
+*.backup.*

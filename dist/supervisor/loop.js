@@ -13,6 +13,7 @@ class SupervisorLoop {
     constructor(config = {}) {
         this.totalIterations = 0;
         this.running = false;
+        this.success = false;
         this.config = {
             verifyCommand: config.verifyCommand || 'npm run build',
             maxIterations: config.maxIterations || 100,
@@ -27,6 +28,7 @@ class SupervisorLoop {
     }
     async start() {
         this.running = true;
+        this.success = false;
         logger_1.logger.info('Supervisor loop started');
         while (this.running) {
             if ((0, validator_1.shouldStop)((0, state_1.loadState)(), this.totalIterations)) {
@@ -37,14 +39,24 @@ class SupervisorLoop {
             this.totalIterations++;
             if ((0, state_1.areAllTasksDone)()) {
                 logger_1.logger.info('All tasks completed');
+                this.success = true;
                 break;
             }
         }
-        logger_1.logger.info(`Supervisor loop finished after ${this.totalIterations} iterations`);
+        if (this.success) {
+            logger_1.logger.info(`Supervisor loop finished successfully after ${this.totalIterations} iterations`);
+        }
+        else {
+            logger_1.logger.error(`Supervisor loop finished with failures after ${this.totalIterations} iterations`);
+        }
+        return this.success;
     }
     stop() {
         this.running = false;
         logger_1.logger.info('Supervisor loop stopped');
+    }
+    isSuccess() {
+        return this.success;
     }
     async iteration() {
         logger_1.logger.info(`Starting iteration ${this.totalIterations + 1}`);
@@ -72,10 +84,10 @@ class SupervisorLoop {
         catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             logger_1.logger.error(`Iteration error: ${message}`);
+            (0, state_1.setLastError)(message, (0, errors_1.computeErrorHash)(message));
         }
     }
     async executeCurrentTask() {
-        const state = (0, state_1.loadState)();
         const task = (0, state_1.getCurrentTask)() || (0, state_1.getNextPendingTask)();
         if (!task) {
             return {
@@ -125,15 +137,25 @@ class SupervisorLoop {
         const errorHash = (0, errors_1.computeErrorHash)(errorMessage);
         if ((0, validator_1.isRepeatedFailure)(state, errorHash)) {
             logger_1.logger.error('Repeated failure detected, rolling back');
-            if ((0, git_1.hasPendingChanges)()) {
-                (0, git_1.gitRevertLast)();
-                (0, state_1.incrementRetries)();
+            const reverted = (0, git_1.gitRevertLast)();
+            if (reverted) {
+                logger_1.logger.info('Rolled back last commit');
             }
-            (0, state_1.setLastError)(errorMessage, errorHash);
+            (0, state_1.incrementRetries)();
             if ((0, validator_1.canRetry)(state)) {
+                logger_1.logger.info(`Retry ${state.retries}/${validator_1.MAX_RETRIES}`);
+                (0, state_1.setLastError)(errorMessage, errorHash);
                 return;
             }
-            logger_1.logger.error('Max retries exceeded, blocking task');
+            const pendingTasks = (0, state_1.getPendingTasks)();
+            if (pendingTasks.length > 0) {
+                logger_1.logger.error(`Max retries (${validator_1.MAX_RETRIES}) exceeded. Task blocked. Moving to next task.`);
+                (0, state_1.advanceToNextTask)();
+            }
+            else {
+                logger_1.logger.error('Max retries exceeded, no more tasks to proceed');
+            }
+            (0, state_1.setLastError)(errorMessage, errorHash);
             this.running = false;
             return;
         }

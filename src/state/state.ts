@@ -1,24 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../utils/logger';
-import { StateError } from '../utils/errors';
+import { State, Task, TaskStatus } from '../types';
 
-export interface Task {
-  id: number;
-  status: 'pending' | 'done' | 'blocked' | 'failed';
-  description: string;
-}
-
-export interface State {
-  currentTask: number;
-  tasks: Task[];
-  retries: number;
-  lastError: string | null;
-  lastErrorHash: string | null;
-}
-
-const STATE_FILE = 'progress.json';
-const BACKUP_FILE = 'progress.bak.json';
+const STATE_FILE = 'state.json';
+const BACKUP_FILE = 'state.bak.json';
 
 export function loadState(): State {
   try {
@@ -26,7 +12,7 @@ export function loadState(): State {
     return JSON.parse(data) as State;
   } catch (err) {
     logger.error(`Failed to load state`, { error: String(err) });
-    throw new StateError(`Failed to load state: ${err}`);
+    throw new Error(`Failed to load state: ${err}`);
   }
 }
 
@@ -42,22 +28,9 @@ export function saveState(state: State): void {
   logger.debug(`State saved: currentTask=${state.currentTask}`);
 }
 
-export function updateTaskStatus(taskId: number, status: Task['status']): void {
-  const state = loadState();
-  const task = state.tasks.find(t => t.id === taskId);
-  
-  if (!task) {
-    throw new StateError(`Task ${taskId} not found`);
-  }
-
-  task.status = status;
-  saveState(state);
-}
-
 export function getCurrentTask(): Task | null {
   const state = loadState();
-  const task = state.tasks.find(t => t.id === state.currentTask);
-  return task || null;
+  return state.tasks.find(t => t.id === state.currentTask) || null;
 }
 
 export function getPendingTasks(): Task[] {
@@ -104,6 +77,16 @@ export function clearLastError(): void {
   const state = loadState();
   state.lastError = null;
   state.lastErrorHash = null;
+  saveState(state);
+}
+
+export function updateTaskStatus(taskId: number, status: TaskStatus): void {
+  const state = loadState();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) {
+    throw new Error(`Task ${taskId} not found`);
+  }
+  task.status = status;
   saveState(state);
 }
 
