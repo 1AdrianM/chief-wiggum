@@ -60,24 +60,63 @@ export class ContextBuilder {
   }
 
   toPrompt(context: ExecutionContext): string {
-    let prompt = context.task;
+    // Build task context - show all tasks and their status
+    const taskList = context.state.tasks
+      .map(t => `  ${t.id}. [${t.status}] ${t.description}`)
+      .join('\n');
+    
+    const completedTasks = context.state.tasks
+      .filter(t => t.status === 'done')
+      .map(t => `- Task ${t.id}: ${t.description}`)
+      .join('\n');
+    
+    const pendingTasks = context.state.tasks
+      .filter(t => t.status === 'pending')
+      .map(t => `- Task ${t.id}: ${t.description}`)
+      .join('\n');
+
+    let prompt = `--- TASK CONTEXT ---\n`;
+    prompt += `Current Task: ${context.taskId}\n\n`;
+    prompt += `ALL TASKS:\n${taskList}\n\n`;
+    
+    if (completedTasks) {
+      prompt += `COMPLETED TASKS:\n${completedTasks}\n\n`;
+    }
+    
+    if (pendingTasks) {
+      prompt += `PENDING TASKS (next to execute):\n${pendingTasks}\n\n`;
+    }
+    
+    prompt += `--- CURRENT TASK ---\n`;
+    prompt += `${context.task}\n\n`;
+    
+    // IMPORTANT: Agent must understand the full context before executing
+    prompt += `--- CONTEXT RULES ---\n`;
+    prompt += `1. BEFORE starting, read state.json to understand the full task list\n`;
+    prompt += `2. If this task depends on previous tasks, verify they are completed\n`;
+    prompt += `3. If you discover this task cannot be done without completing another first:\n`;
+    prompt += `   - Add the dependency as a new pending task in state.json\n`;
+    prompt += `   - Mark current task as "pending" and update currentTask to the new task\n`;
+    prompt += `4. After completing, update state.json with the result\n\n`;
     
     if (context.lastError) {
-      prompt += `\n\nPrevious attempt failed with: ${context.lastError}`;
-      prompt += `\n\nIMPORTANT: Fix the error above before completing the task.`;
+      prompt += `--- PREVIOUS ERROR ---\n`;
+      prompt += `${context.lastError}\n`;
+      prompt += `IMPORTANT: Fix the error above before completing the task.\n\n`;
     }
     
     // Interactive mode: allow OpenCode to manage state
-    prompt += `\n\n--- INTERACTIVE MODE ---`;
-    prompt += `\nYou can read/write the following files to manage task state:`;
-    prompt += `\n- state.json: Contains currentTask, tasks array, retries, lastError`;
-    prompt += `\n- audit.log: Append-only execution log`;
-    prompt += `\n- .chief-wiggum/config.json: Provider configuration`;
-    prompt += `\n\nWhen you complete a task, you can:`;
-    prompt += `\n1. Mark the task as "done" in state.json`;
-    prompt += `\n2. Add new tasks to the tasks array`;
-    prompt += `\n3. Update currentTask to the next task ID`;
-    prompt += `\n\nWhen complete, output exactly "[DONE]" (including brackets) to signal success.`;
+    prompt += `--- INTERACTIVE MODE ---\n`;
+    prompt += `You can read/write the following files to manage task state:\n`;
+    prompt += `- state.json: Contains currentTask, tasks array, retries, lastError\n`;
+    prompt += `- audit.log: Append-only execution log\n`;
+    prompt += `- .chief-wiggum/config.json: Provider configuration\n`;
+    prompt += `- PRD.md or SPEC.md: Project specifications\n\n`;
+    prompt += `When you complete a task, you can:\n`;
+    prompt += `1. Mark the task as "done" in state.json\n`;
+    prompt += `2. Add new tasks to the tasks array if you discover dependencies\n`;
+    prompt += `3. Update currentTask to the next task ID\n`;
+    prompt += `\nWhen complete, output exactly "[DONE]" (including brackets) to signal success.`;
     
     return prompt;
   }
