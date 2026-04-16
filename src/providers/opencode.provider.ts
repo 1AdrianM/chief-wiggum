@@ -99,13 +99,15 @@ export class OpenCodeProvider implements Provider {
 
   private async executeDirect(prompt: string, context?: ProviderContext): Promise<ExecutionResult> {
     return new Promise((resolve) => {
-      console.log(`\n>>> OpenCode Prompt: ${prompt}\n`);
+      const workdir = context?.workdir || process.cwd();
       
-      // Use minimax-m2.5-free model
-      const child = spawn('opencode', ['run', '-m', 'opencode/minimax-m2.5-free', prompt], {
+      console.log(`\n>>> OpenCode Prompt: ${prompt.substring(0, 100)}...\n`);
+      
+      // Use opencode run with . as project path (current directory)
+      const child = spawn('opencode', ['run', '.', '-m', 'opencode/minimax-m2.5-free', '--', prompt], {
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: false,
-        cwd: context?.workdir || process.cwd()
+        cwd: workdir
       });
 
       let stdout = '';
