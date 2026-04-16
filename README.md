@@ -353,6 +353,14 @@ See [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md) for evolution strategy.
 
 ---
 
+## Session
+
+- **Chat ID**: current_session
+- **Date**: 2026-04-16
+- **Developers**: 1AdrianM (Tech Lead) + AI Agent (Execution)
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
